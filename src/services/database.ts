@@ -95,11 +95,11 @@ class DatabaseService {
   async seedAssets(): Promise<void> {
     try {
       const assets = [
-        { symbol: 'USDT', name: 'USDT', amount: '20', cooldown_hours: 8, contract_address: config.contracts.USDT },
-        { symbol: 'USDC', name: 'USDC', amount: '20', cooldown_hours: 8, contract_address: config.contracts.USDC },
-        { symbol: 'ETH', name: 'Ethereum', amount: '20', cooldown_hours: 8, contract_address: config.contracts.ETH },
-        { symbol: 'SHIB', name: 'Shib', amount: '100000', cooldown_hours: 8, contract_address: config.contracts.SHIB },
-        { symbol: 'TREAT', name: 'Treat', amount: '1000', cooldown_hours: 8, contract_address: config.contracts.TREAT },
+        { symbol: 'BONE', name: 'BONE', amount: '0.1', cooldown_hours: 8, contract_address: 'native' },
+        { symbol: 'SHIB', name: 'Shiba Inu', amount: '1000', cooldown_hours: 8, contract_address: config.contracts.SHIB },
+        { symbol: 'TREAT', name: 'TREAT', amount: '5', cooldown_hours: 8, contract_address: config.contracts.TREAT },
+        { symbol: 'USDT', name: 'Tether USD', amount: '1', cooldown_hours: 8, contract_address: config.contracts.USDT },
+        { symbol: 'USDC', name: 'USD Coin', amount: '1', cooldown_hours: 8, contract_address: config.contracts.USDC },
       ];
 
       for (const asset of assets) {
