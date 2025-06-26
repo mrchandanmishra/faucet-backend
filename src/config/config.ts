@@ -18,11 +18,11 @@ interface Config {
     chainId: number;
   };
   contracts: {
-    USDT: string;
-    USDC: string;
-    ETH: string;
+    BONE: string;
     SHIB: string;
     TREAT: string;
+    USDT: string;
+    USDC: string;
   };
   rateLimit: {
     windowMs: number;
@@ -52,11 +52,11 @@ const config: Config = {
   },
   
   contracts: {
-    USDT: process.env.USDT_CONTRACT || '',
-    USDC: process.env.USDC_CONTRACT || '',
-    ETH: process.env.ETH_CONTRACT || '',
+    BONE: process.env.BONE_CONTRACT || 'native',
     SHIB: process.env.SHIB_CONTRACT || '',
     TREAT: process.env.TREAT_CONTRACT || '',
+    USDT: process.env.USDT_CONTRACT || '',
+    USDC: process.env.USDC_CONTRACT || '',
   },
   
   rateLimit: {

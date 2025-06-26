@@ -1,0 +1,84 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import config from './config/config';
+
+// Import routes
+import faucetRoutes from './routes/faucet-simple';
+
+const app = express();
+
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-frontend-domain.com'] 
+    : ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: config.rateLimit.windowMs, // 8 hours
+  max: config.rateLimit.maxRequests,   // 5 requests per window
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    resetTime: Math.ceil(config.rateLimit.windowMs / 1000 / 60) + ' minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', limiter);
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: config.nodeEnv,
+    network: 'Shibarium Puppynet'
+  });
+});
+
+// API routes
+app.use('/api/faucet', faucetRoutes);
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: `Route ${req.originalUrl} not found`,
+    availableEndpoints: [
+      'GET /health',
+      'POST /api/faucet/claim',
+      'GET /api/faucet/status/:address'
+    ]
+  });
+});
+
+// Global error handler
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Global error handler:', error);
+  
+  // Don't leak error details in production
+  const isDev = config.nodeEnv === 'development';
+  
+  res.status(error.status || 500).json({
+    error: 'Internal Server Error',
+    message: isDev ? error.message : 'Something went wrong',
+    ...(isDev && { stack: error.stack })
+  });
+});
+
+export default app;

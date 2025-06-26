@@ -57,9 +57,14 @@ class DatabaseService {
           amount DECIMAL(18,8) NOT NULL,
           tx_hash VARCHAR(66),
           status VARCHAR(20) DEFAULT 'pending',
-          claimed_at TIMESTAMP DEFAULT NOW(),
-          UNIQUE(wallet_address, asset, DATE(claimed_at))
+          claimed_at TIMESTAMP DEFAULT NOW()
         )
+      `);
+
+      // Create unique constraint separately (some PostgreSQL versions have issues with inline constraints)
+      await this.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS unique_daily_claim 
+        ON claims (wallet_address, asset, DATE(claimed_at))
       `);
 
       // Create cooldowns table
