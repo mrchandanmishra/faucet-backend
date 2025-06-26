@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { ethers, Contract } from 'ethers';
 import config from '../config/config';
 
 // ERC20 Token ABI (minimal interface for transfers)
@@ -15,6 +15,14 @@ class BlockchainService {
   private wallet: ethers.Wallet;
 
   constructor() {
+    if (!config.blockchain.rpcUrl) {
+      throw new Error('TESTNET_RPC_URL is required in environment variables');
+    }
+    
+    if (!config.blockchain.privateKey) {
+      throw new Error('PRIVATE_KEY is required in environment variables');
+    }
+
     this.provider = new ethers.JsonRpcProvider(config.blockchain.rpcUrl);
     this.wallet = new ethers.Wallet(config.blockchain.privateKey, this.provider);
   }
@@ -31,6 +39,7 @@ class BlockchainService {
       });
 
       console.log(`✅ BONE transfer initiated. TX: ${tx.hash}`);
+      await tx.wait(1); // Wait for 1 confirmation
       return tx.hash;
     } catch (error) {
       console.error('❌ BONE transfer failed:', error);
@@ -43,15 +52,26 @@ class BlockchainService {
     try {
       console.log(`🔄 Sending ${amount} tokens from ${contractAddress} to ${toAddress}...`);
 
-      const contract = new ethers.Contract(contractAddress, ERC20_ABI, this.wallet);
+      const contract = new Contract(contractAddress, ERC20_ABI, this.wallet);
       
       // Convert amount to proper decimals
       const tokenAmount = ethers.parseUnits(amount, decimals);
 
-      // Send the transaction
-      const tx = await contract.transfer(toAddress, tokenAmount);
+      // Check if transfer function exists
+      if (typeof contract.transfer !== 'function') {
+        throw new Error('Transfer function not found in contract');
+      }
+
+      // Estimate gas first
+      const gasEstimate = await contract.transfer.estimateGas(toAddress, tokenAmount);
+      
+      // Send the transaction with gas estimate
+      const tx = await contract.transfer(toAddress, tokenAmount, {
+        gasLimit: gasEstimate + 10000n // Add buffer
+      });
       
       console.log(`✅ Token transfer initiated. TX: ${tx.hash}`);
+      await tx.wait(1); // Wait for 1 confirmation
       return tx.hash;
     } catch (error) {
       console.error(`❌ Token transfer failed for ${contractAddress}:`, error);
@@ -68,14 +88,25 @@ class BlockchainService {
         return ethers.formatEther(balance);
       } else {
         // Get ERC20 token balance
-        const contract = new ethers.Contract(contractAddress, ERC20_ABI, this.provider);
+        const contract = new Contract(contractAddress, ERC20_ABI, this.provider);
+        
+        // Check if balanceOf function exists
+        if (typeof contract.balanceOf !== 'function') {
+          throw new Error('BalanceOf function not found in contract');
+        }
+
+        // Check if decimals function exists
+        if (typeof contract.decimals !== 'function') {
+          throw new Error('Decimals function not found in contract');
+        }
+
         const balance = await contract.balanceOf(this.wallet.address);
         const decimals = await contract.decimals();
         return ethers.formatUnits(balance, decimals);
       }
     } catch (error) {
       console.error(`❌ Failed to get balance for ${contractAddress}:`, error);
-      throw error;
+      return '0';
     }
   }
 
@@ -138,7 +169,6 @@ class BlockchainService {
       case 'TREAT': return config.contracts.TREAT;
       case 'USDT': return config.contracts.USDT;
       case 'USDC': return config.contracts.USDC;
-      case 'ETH': return config.contracts.ETH;
       default:
         throw new Error(`Unsupported asset: ${asset}`);
     }
@@ -174,6 +204,20 @@ class BlockchainService {
   // Get faucet wallet info
   getFaucetWalletAddress(): string {
     return this.wallet.address;
+  }
+
+  // Test connection to blockchain
+  async testConnection(): Promise<boolean> {
+    try {
+      const network = await this.provider.getNetwork();
+      const balance = await this.provider.getBalance(this.wallet.address);
+      console.log(`✅ Connected to network ${network.chainId}`);
+      console.log(`✅ Wallet balance: ${ethers.formatEther(balance)} BONE`);
+      return true;
+    } catch (error) {
+      console.error('❌ Blockchain connection test failed:', error);
+      return false;
+    }
   }
 }
 

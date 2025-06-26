@@ -4,8 +4,12 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import config from './config/config';
 
+console.log('🔄 Loading faucet routes...');
+
 // Import routes
-import faucetRoutes from './routes/faucet-simple';
+import faucetRoutes from './routes/faucet';
+
+console.log('✅ Faucet routes loaded successfully');
 
 const app = express();
 
@@ -22,20 +26,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: config.rateLimit.windowMs, // 8 hours
-  max: config.rateLimit.maxRequests,   // 5 requests per window
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    resetTime: Math.ceil(config.rateLimit.windowMs / 1000 / 60) + ' minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Rate limiting (only in production)
+if (config.nodeEnv === 'production') {
+  const limiter = rateLimit({
+    windowMs: config.rateLimit.windowMs, // 8 hours
+    max: config.rateLimit.maxRequests,   // 5 requests per window
+    message: {
+      error: 'Too many requests from this IP, please try again later.',
+      resetTime: Math.ceil(config.rateLimit.windowMs / 1000 / 60) + ' minutes'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
-// Apply rate limiting to all API routes
-app.use('/api/', limiter);
+  // Apply rate limiting to all API routes
+  app.use('/api/', limiter);
+} else {
+  console.log('⚠️  Rate limiting disabled in development mode');
+}
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
