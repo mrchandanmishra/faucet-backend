@@ -1,3 +1,5 @@
+// src/app.ts - REPLACE in your BACKEND repo
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -16,15 +18,25 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - Updated to allow frontend connection
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://your-frontend-domain.com'] 
-    : ['http://localhost:5173', 'http://localhost:3000'],
+    : [
+        'http://localhost:5173',   // Vite default
+        'http://localhost:3000',   // React dev server
+        'http://localhost:4173',   // Vite preview
+        'http://127.0.0.1:5173',   // Alternative localhost
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:4173'
+      ],
   credentials: true,
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Rate limiting (only in production)
 if (config.nodeEnv === 'production') {
@@ -70,7 +82,9 @@ app.use('*', (req, res) => {
     availableEndpoints: [
       'GET /health',
       'POST /api/faucet/claim',
-      'GET /api/faucet/status/:address'
+      'GET /api/faucet/status/:address',
+      'GET /api/faucet/assets',
+      'GET /api/faucet/info'
     ]
   });
 });
